@@ -1,0 +1,173 @@
+\documentclass[12pt]{article}
+
+% --- PACKAGES ---
+\usepackage{amsmath}         % For advanced math environments and commands
+\usepackage{amssymb}         % For math symbols like \mathbb
+\usepackage[margin=1in]{geometry} % To set page margins
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\pagestyle{fancy}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\F}{\mathbb{F}}
+
+% Vectors / bold
+\newcommand{\bm}[1]{\mathbf{#1}}   % bold vectors, e.g. \bm{x}
+\newcommand{\bs}[1]{\boldsymbol{#1}} % bold symbols, e.g. \bs{\alpha}
+
+% Optimization
+\newcommand{\Lag}{\mathcal{L}}
+\newcommand{\argmax}{\mathop{\mathrm{arg\,max}}}
+\newcommand{\argmin}{\mathop{\mathrm{arg\,min}}}
+
+% Probability / expectations
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\prob}{\mathbb{P}}
+\newcommand{\Pro}{\mathbb{P}}
+
+% Calculus
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}  % partial derivatives
+\newcommand{\dd}[2]{\frac{d #1}{d #2}}                % total derivatives
+
+% Math operators
+\DeclareMathOperator{\conv}{conv}
+\DeclareMathOperator{\interior}{int}
+\DeclareMathOperator{\cl}{cl}
+\DeclareMathOperator{\dom}{dom}
+\DeclareMathOperator{\rank}{rank}
+
+% --- THEOREM-LIKE ENVIRONMENTS ---
+\newtheorem{thm}{Theorem}
+\newtheorem{prop}{Proposition}
+\newtheorem{cor}{Corollary}
+\newtheorem{lem}{Lemma}
+\newtheorem{defn}{Definition}
+\newtheorem{ex}{Example}
+\newtheorem{remark}{Remark}
+\newtheorem{exercise}{Exercise}
+
+% --- CUSTOM ENVIRONMENT FOR PROBLEMS ---
+\newcounter{problem}
+
+% Main problem environment
+\newenvironment{problem}[1][]{
+    \newpage % start each problem on a new page
+    \refstepcounter{problem}\par\noindent
+    \textbf{Problem~\theproblem\ifx&#1&\else.~#1\fi}\rmfamily\par\vspace{0.5em}
+}{\vspace{1em}}
+
+% Subproblem environment with enumerate
+\newlist{subproblems}{enumerate}{1}
+\setlist[subproblems]{label=(\alph*), leftmargin=*, itemsep=1em, parsep=0.5em}
+
+% Solution command for after each subproblem
+\newcommand{\solution}{\par\vspace{0.3em}\noindent\textit{Solution:}\par\vspace{0.3em}}
+
+% --- DOCUMENT BODY ---
+\begin{document}
+
+\fancyhf{} % clear all header and footer fields
+\fancyhead[L]{Homework 2}
+\fancyhead[R]{Hayden Schrauff}
+\vspace{1em}
+
+\begin{problem}
+
+\begin{subproblems}
+    \item Given the model, the binary outcome probabilities are: 
+    
+    \begin{align*}
+        &\Pr(y_i = 1 | x_i, \beta) = \Phi(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i}) \\
+        &\Pr(y_i = 0 | x_i, \beta) = 1 - \Phi(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i}) = \Phi(-(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i}))
+    \end{align*}
+
+    where $\Phi$ is the standard normal cdf. Then the likelihood of a single $y_i$ can be expressed as 
+
+    \[
+    \mathscr{L}_i(y_i; x_i, \theta) = \Phi(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i})^{y_i}\Phi(-(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i}))^{1-y_i}
+    \]
+
+    and therefore the log-likelihood of a sample $\{y_i\}_{i=1}^N$ is 
+
+    \[
+    \log \mathscr{L}(\{y_i\}_{i=1}^N; X, \theta) = \sum_{i=1}^N y_i\log\Phi(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i})
+    + (1-y_i)\log\Phi(-(\theta_0 + \theta_1 x_{1i} + \theta_2 x_{2i}))
+    \]
+
+    To solve the model, I find $\theta_0, \theta_1, \theta_2$ to maximize this expression. To find these parameters, I use the \texttt{minimize} function from the \texttt{scipy} package (an alternative approach could use gradient descent to find the parameter values that minimize the gradient). Next, I evaluate the log-likelihood's gradient at the optimal parameters for each observation and ``square'' the matrix (the exact approach Dan outlined in his PSET 1 setup). Standard errors are the square roots of the diagonal elements of the resulting matrix. 
+
+    \begin{table}[H]
+        \centering 
+        \caption{Probit Estimates}
+        \label{tab:probit}
+        \input{output/table_1a_probit.tex}
+    \end{table}
+
+    \item To find the effect of an additional year of education on the probability of an average woman working, I first recover the average age and education level of women in the sample. Then, I evaluate the following: 
+    
+    \[
+    \Phi(\hat\theta_0 + \hat\theta_1(\text{mean age}) + \hat\theta_2(1 + \text{mean education})) - 
+    \Phi(\hat\theta_0 + \hat\theta_1(\text{mean age}) + \hat\theta_2(\text{mean education}))
+    \]
+
+    Which, for estimates recovered from a probit model, is the increase in probability from an additional year of education for the ``average'' woman. This comes out to be approximately 4\%. 
+
+    \item For the logit model, the probabilities are 
+    
+    \begin{align*}
+        &\prob(y_i = 1 | x_i, \theta) = \frac{1}{1 + \exp(\theta_0 + \theta_1 x_{i1} + \theta_2 x_{2i})} \\
+        & \prob(y_i = 0 | x_i, \theta) = 1 - \frac{1}{1 + \exp(\theta_0 + \theta_1 x_{i1} + \theta_2 x_{2i})}
+    \end{align*}
+
+    This implies the likelihood of a single $y_i$ is 
+
+    \[
+    \mathscr{L}(y_i; x_i, \theta) = 
+    \left(\frac{1}{1 + \exp(-x_i\theta)}\right)^{y_i}
+    \left(1 - \frac{1}{1 + \exp(-x_i\theta)}\right)^{1 - y_i}
+    \]
+
+    Implying the log-likelihood of a sample of $\{y_i\}_{i=1}^N$ is 
+
+    \[
+    \log \mathscr{L}(\{y_i\}_{i=1}^N; X, \theta) = \sum_{i=1}^{N}y_i\log\left(\frac{1}{1 + \exp(-x_i\theta)}\right) + (1 - y_i) \log\left(1 - \frac{1}{1 + \exp(-x_i\theta)}\right)
+    \]
+
+    To solve for the parameters that maximize this likelihood, I tried using the \texttt{minimize} function on the negative log-likelihood, but it did not converge across a few different specifications. I next tried my hand-written gradient descent from PSET 1, but this method also did not work. Finally, I used the \texttt{root} function to solve for the parameters that set the non-linear analytic gradient to zero.\footnote{The algebra for the gradient (or score) was checked here: https://www.statlect.com/fundamentals-of-statistics/logistic-model-maximum-likelihood} This did work. Following the resource in the footnote, I computed standard errors using the weighing matrix after the initial estimation. 
+
+    \begin{table}[H]
+        \centering 
+        \caption{Logit Estimates}
+        \label{tab:logit}
+        \input{output/table_1c_logit.tex}
+    \end{table}
+    
+    My estimates differ slightly from Dan's. I was unable to determine why this is the case. In any case, the estimates differ substantially between the logit and probit models. This is expected because the coefficients have different interpretations. For logit, the estimates correspond to changes in \emph{log odds} of working, whereas for probit coefficients correspond to changes for the z-score of the likelihood of working.\footnote{Explanation based on these slides \url{https://minio.la.utexas.edu/webeditor-files/prc/pdf/fall2013_moore_logistic_probit_regression.pdf}} By itself, neither is particularly useful, much less comparable. 
+
+    As Dan suggests, we are better off comparing the ratio of coefficients between the models. The ratio of $\frac{\hat\theta_1}{\hat\theta_2}$ is approximately -0.08 in both models. The difference in ratios between the two models is smaller than the absolute difference because, whereas the former difference is because the scale of outcomes is different, a ratio eliminates this difference in scale and allows the researcher to compare how impactful $x_1$ is relative to $x_2$. 
+
+    The difference in coefficients is larger because the outcome from a one unit increase in the explanatory variable is different between models. The difference in \emph{ratios} is smaller because the scaling differences are cancelled out. Instead, we are evaluating how impactful one explanatory variable is to another on the probability of working. 
+
+\end{subproblems}
+\end{problem}
+
+\begin{problem}
+    \begin{subproblems}
+        \item 
+    \end{subproblems}
+\end{problem}
+
+
+\end{document}

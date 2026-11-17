@@ -1,0 +1,252 @@
+\documentclass[12pt]{article}
+
+% --- PACKAGES ---
+\usepackage{amsmath}         % For advanced math environments and commands
+\usepackage{amssymb}         % For math symbols like \mathbb
+\usepackage[margin=1in]{geometry} % To set page margins
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{hyperref}
+\pagestyle{fancy}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\F}{\mathbb{F}}
+
+% Vectors / bold
+\newcommand{\bm}[1]{\mathbf{#1}}   % bold vectors, e.g. \bm{x}
+\newcommand{\bs}[1]{\boldsymbol{#1}} % bold symbols, e.g. \bs{\alpha}
+
+% Optimization
+\newcommand{\Lag}{\mathcal{L}}
+\newcommand{\argmax}{\mathop{\mathrm{arg\,max}}}
+\newcommand{\argmin}{\mathop{\mathrm{arg\,min}}}
+
+% Probability / expectations
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\prob}{\mathbb{P}}
+\newcommand{\Pro}{\mathbb{P}}
+
+% Calculus
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}  % partial derivatives
+\newcommand{\dd}[2]{\frac{d #1}{d #2}}                % total derivatives
+
+% Math operators
+\DeclareMathOperator{\conv}{conv}
+\DeclareMathOperator{\interior}{int}
+\DeclareMathOperator{\cl}{cl}
+\DeclareMathOperator{\dom}{dom}
+\DeclareMathOperator{\rank}{rank}
+
+% --- THEOREM-LIKE ENVIRONMENTS ---
+\newtheorem{thm}{Theorem}
+\newtheorem{prop}{Proposition}
+\newtheorem{cor}{Corollary}
+\newtheorem{lem}{Lemma}
+\newtheorem{defn}{Definition}
+\newtheorem{ex}{Example}
+\newtheorem{remark}{Remark}
+\newtheorem{exercise}{Exercise}
+
+% --- CUSTOM ENVIRONMENT FOR PROBLEMS ---
+\newcounter{problem}
+
+% Main problem environment
+\newenvironment{problem}[1][]{
+    \newpage % start each problem on a new page
+    \refstepcounter{problem}\par\noindent
+    \textbf{Problem~\theproblem\ifx&#1&\else.~#1\fi}\rmfamily\par\vspace{0.5em}
+}{\vspace{1em}}
+
+% Subproblem environment with enumerate
+\newlist{subproblems}{enumerate}{1}
+\setlist[subproblems]{label=(\alph*), leftmargin=*, itemsep=1em, parsep=0.5em}
+
+% Solution command for after each subproblem
+\newcommand{\solution}{\par\vspace{0.3em}\noindent\textit{Solution:}\par\vspace{0.3em}}
+
+% --- DOCUMENT BODY ---
+\begin{document}
+
+\fancyhf{} % clear all header and footer fields
+\fancyhead[L]{Homework 1}
+\fancyhead[R]{Hayden Schrauff}
+\vspace{1em}
+
+\begin{problem}
+
+\begin{subproblems}
+    \item Our estimates are $\hat{\theta}_1 = 0.0055 \; (SE(\hat{\theta}_1) = 0.022$) and $\hat{\theta}_2 = 1.0105 \; (SE(\hat{\theta}_1) = 0.023$). 
+
+    \item We can re-arrange the model such that 
+
+    $$\epsilon_i = y_i - \theta_1 - \theta_2 x_i \implies y_i \sim N(\theta_1 + \theta_2 x_i, \sigma^2)$$
+
+    This implies we may write the log-likelihood function for $Y$ as
+
+    $$P(Y | X, \theta) = \frac{N}{2}\ln(2\pi) + N\ln(\sigma) + \frac{1}{2\sigma^2}\sum_{i=1}^{N}(y_i - \theta_1 - \theta_2 x_i)^2$$
+
+    (Technically, since we use a minimize optimization procedure, this represents the \emph{negative} log-likelihood for the set of observations.) 
+
+    Next, I solve for the parameters using gradient descent.\footnote{I closely followed the method outlined in https://sbu-python-class.github.io/python-science/11-machine-learning/gradient-descent.html for manual gradient descent.} Specific derivations are relegated to my code, but the general outline is to to calculate the negative log-likelihood for the sample of observations, numerically approximate the gradient using Dan's suggestion, guess an initial set of parameters, and then perform gradient descent to find the parameters which minimize the gradient. Finally, we use these parameters to solve for the standard errors of the estimates. The point estimates and standard errors for $\hat{\theta_1}$ and $\hat{\theta_2}$ are virtually identical to part a. I estimate $\hat{\sigma} = 0.4998$ with $SE(\hat{\sigma}) = 0.0161$. 
+    
+    \item First, we cannot directly identify $\sigma$ because this would require imposing an additional moment condition. Otherwise, we would be solving two equations for three unknowns. Second, because the model is exactly identified, we can simplify the variance formula by substituting in the identity matrix for the $A$ matrix. This follows because either matrix will recover the same coefficient estimates, resulting in the same standard errors. We verify this numerically in the code and the proof is 
+
+    \begin{align*}
+        &(\Gamma'A\Gamma)^{-1}(\Gamma' A V A \Gamma) (\Gamma' A \Gamma)^{-1} \\
+        &=(\Gamma'I\Gamma)^{-1}(\Gamma' I V I \Gamma) (\Gamma' I \Gamma)^{-1} \\
+        &=(\Gamma'\Gamma)^{-1}(\Gamma' V \Gamma) (\Gamma' \Gamma)^{-1} \\ 
+        &=\Gamma^{-1}\Gamma'^{-1}\Gamma' V \Gamma\Gamma^{-1}\Gamma'^{-1} \\
+        &=\Gamma^{-1} V \Gamma'^{-1}
+    \end{align*}
+
+    Now we state out estimates. Given the model, our sample moment conditions amount to using the following in the GMM objective function 
+
+    $$G_N(\theta) = \frac{1}{N}\sum_{i=1}^{N}
+    \begin{pmatrix}
+        y_i - \theta_1 - \theta_2 x_i \\ 
+        y_ix_i - \theta_1x_i - \theta_2 x_i^2
+    \end{pmatrix}$$
+
+    We recover these estimates first using the identity matrix, getting $\hat{\theta}_1 = 0.0055$ and $\hat{\theta}_2 = 1.010$, as before. For practice, we approximate the optimal matrix and recover the same coefficient estimates. Finally, we estimate the standard errors to be $SE(\hat{\theta}_1) = 0.0223$ and $SE(\hat{\theta}_2) = 0.0224$.
+
+\end{subproblems}
+\end{problem}
+
+\begin{problem}
+    
+    \begin{subproblems}
+        \item As Dan suggests, since the likelihood function could have several local maxima, we iterate through 50 different initial guesses for $\theta_1, \theta_2,$ and $\sigma$ where each a random value drawn from  $U(0, 10]$ (we could in principle use several more draws, but this becomes computationally burdensome). We then use gradient descent to find the parameter estimates which produces the largest likelihood. Our coefficient (SE) estimates are $\theta_1 = 3.0659 (0.1953), \theta_2 = 1.0272 (0.253), \text{ and } \sigma = 0.9633 (0.0778)$. 
+
+        \item Our model implies the following moment conditions: 
+        
+        $$G(\theta) = \E\begin{bmatrix}
+            \log(y_i) - \theta_1 - x_i^{\theta_2} \\
+            x_i\log(y_i) - x_i\theta_1 - x_i^{\theta_2 + 1}
+        \end{bmatrix} = 0$$
+
+        we find the corresponding sample moments. We use 50 different starting values for $\theta_1$ and $\theta_2$ where each is drawn from $U(0, 10]$ and then find the coefficient estimates as the coefficients which best minimize the GMM quadratic form objective function. In the first stage, we use the identity matrix before computing the optimal weighting matrix and re-estimating the coefficients. We recover the coefficient estimate for $\theta_1$ and for $\theta_2$ as 3.0574 and $1.0394$, respectively, and with standard errors 0.186 and 0.216, respectively. 
+
+        \medskip
+
+        The approach in (b) is robust to heteroskedasticity because it only assumes that the errors are conditionally mean zero, whereas the approach in (a) supposes that the error term has a variance that is independent of $x$'s i.e. that there is homoskedasticity. 
+
+        \medskip
+
+        The GMM estimator is no longer efficient because the model is non-linear. This implies that our moment conditions, which only use information on $x_i$ and $\epsilon_i$, are not using as much information from our modelling assumptions as is necessary for an efficient estimator.
+
+    \end{subproblems}
+\end{problem}
+
+\begin{problem}
+    \begin{subproblems}
+        \item The profit for firm 1 in market $i$ is given by
+        \begin{align*}
+            \pi_{i1} &= (p_i - mc_{i1})q_{i1} \\
+            &= (100 - q_{i1} - q_{i2} - mc_{i1})q_{i1}
+        \end{align*}
+
+        The FOC is thus 
+
+        $$\pd{\pi_{i1}}{q_{i1}} = 0 \iff 100 - q_{i1}^* - q_{i2}^* - mc_{i1} - q_{i1}^* = 0 \implies q_{i1}^* = \frac{100 - q_{i2}^* - mc_{i1}}{2}$$
+
+        Since the problem is symmetric for firm 2 in market $i$ we have 
+
+        $$q_{i2}^*=  \frac{100 - q_{i1}^* - mc_{i1}}{2}$$
+
+        Substituting in $q_{i2}^*$ into $q_{i1}^*$ and vice-versa implies the equilibrium quantities are given by 
+
+        \begin{align*}
+            q_{i1}^* &= \frac{100 + mc_{i2} - 2mc_{i1}}{3} \\
+            q_{i2}^* &= \frac{100 + mc_{i1} - 2mc_{i2}}{3}
+        \end{align*}
+
+        Inputting these values into the inverse demand curve implies the equilibrium price is 
+
+        $$p_i^* = \frac{100 + mc_{i1} + mc_{i2}}{3}$$
+
+        \item Before we derive our coefficient and SE estimates, I will note I do not use multiple starting parameters to estimate the model in my code. Given the model is non-linear, this is bad practice. I did not realize this until it was too late to alter the code. If I did, the procedure would follow almost exactly what I did for question 2's coding problems. From (a) we have equilibrium prices taking the form 
+        
+        $$p_i^* = \frac{100 + mc_{i1} + mc_{i2}}{3}$$
+
+        As Dan notes, there is one dependent variable and two unobserved variables. That means we cannot simply invert the pricing equation above. Instead, we will integrate out one of the unobserved variables. Since marginal costs are symmetric, there is no advantage to integrating out one unobservable over the other. Hence, WLOG we will integrate out $\epsilon_{i}^2$. From the law of total probability 
+
+        $$p(p_i|x_i^1, x_i^2; \theta_1, \theta_2, \sigma) = \int p(p_i|x_i^1, x_i^2, \epsilon_i^2; \theta_1, \theta_2, \sigma)p(\epsilon_i^2)d\epsilon_i^2$$
+
+        Essentially, for each possible value of $\epsilon_i^2$, we want to find the corresponding $\epsilon_i^1$ that results in the observed price. Then, we'll integrate over the possible values of $\epsilon_i^2$ given the distributional assumption on the error terms. The equilibrium pricing equation and the functional form of marginal cost implies the following relationship of $\epsilon_i^1$ to the observables and the other error term
+
+        $$\epsilon_i^1 = \frac{1}{\sigma}(\ln(3p_i^* - 100 - mc_{i2}) - \theta_1 - \theta_2 x_i^1)$$
+
+        Next, we need to find $p(p_i|x_i^1, x_i^2, \epsilon_i^2; \theta_1, \theta_2, \sigma)$. For this, we can use the change of variable formula. The Jacobian term is given by 
+
+        $$\left|\text{det}\left(\pd{\epsilon_i^1}{p_i}\right)\right| = \left|\frac{3}{\sigma(3p_i - 100 - mc_{i2})}\right|$$
+        
+        
+        Given that $\epsilon_i^1 \sim N(0,1)$ and letting $\phi(x)$ denote the pdf of the standard normal distribution, we apply the change of variable formula to arrive at 
+
+        \begin{align*}
+            p(p_i|x_i^1, x_i^2, \epsilon_i^2; \theta_1, \theta_2, \sigma) = \phi\left(\frac{1}{\sigma}(\ln(3p_i^* - 100 - mc_{i2}) - \theta_1 - \theta_2 x_i^1)\right)\left|\frac{3}{\sigma(3p_i - 100 - mc_{i2})}\right|
+        \end{align*}
+
+        Substituting this into the original likelihood of price and recalling $\epsilon_i^2 \sim N(0,1)$ we arrive at 
+
+        $$p(p_i|x_i^1, x_i^2; \theta_1, \theta_2, \sigma) = \int \phi\left(\frac{1}{\sigma}(\ln(3p_i^* - 100 - mc_{i2}) - \theta_1 - \theta_2 x_i^1)\right)\left|\frac{3}{\sigma(3p_i - 100 - mc_{i2})}\right|\phi(\epsilon_i^2)d\epsilon_i^2$$
+
+        Simulating 20 draws for each of the 50 markets and averaging gives the likelihood of $p_i$, i.e., 
+
+        $$p(p_i | x_i^1, x_i^2; \theta_1, \theta_2, \sigma) \approx \frac{1}{20}\sum_{i=1}^{20}\phi\left(\frac{1}{\sigma}(\ln(3p_i^* - 100 - mc_{i2}) - \theta_1 - \theta_2 x_i^1)\right)\left|\frac{3}{\sigma(3p_i - 100 - mc_{i2})}\right|$$
+
+        where the simulated error term is understood to be inputted into the marginal cost terms. We then calculate the log-likelihood that the panel of prices (abusing notation, set $p = \{p_i\}_{i=1}^{50}$) is observed, for a candidate set of parameters, to be:
+
+        $$\log(p(p | x^1, x^2; \theta_1, \theta_2, \sigma)) = \sum_{i=1}^{50}\log(p(p_i | x_i^1, x_i^2; \theta_1, \theta_2, \sigma))$$
+
+        We find the optimal parameters using gradient descent. The coefficient estimates (standard errors) are $\theta_1 = 1.005 \; (0.009)$, $\theta_2 = 1.046 \; (0.129)$, and $\sigma = 0.097 \; (0.011)$. 
+
+        \item If we only assumed mean independence of the errors, we would have no functional form allowing us to write one error in terms of the error. Thus, we could not ``integrate out'' one of the error terms. Indeed, we would not even be able to draw sample error terms to simulate the data. Instead, we would have to analytically compute a large dimensional integral since there are 50 markets, each with two error terms. 
+        
+        \item Now we estimate the model using MSM. Given the generic moment condition, the sample analogue is 
+        
+        $$G_N(\theta) = \frac{1}{N}\sum_{i=1}^{N}
+        \begin{pmatrix}
+            p_i - \frac{1}{N}\sum_{i=1}^{N}p_i^* \\
+            p_ix_i^1 - \frac{x_i^1}{N}\sum_{i=1}^{N}p_i^* \\
+            p_ix_i^2 - \frac{x_i^2}{N}\sum_{i=1}^{N}p_i^* \\
+            p^2 - \frac{x_i^2}{N}\sum_{i=1}^{N}p_i^{*2}
+        \end{pmatrix}$$
+
+        where $p_i$ is understood to be the observed price and $p_i^*$ is the model-predicted observed price given the observables, parameters, and simulated error terms. Following Dan's suggestion, we regress $\log(p_i)$ on the observables to obtain initial coefficient estimates. (Initially, I was a bit unsure exactly what Dan meant here, so I use the intercept as the coefficient estimate for $\sigma$. After discussing with classmates, I think I should have instead performed pooled OLS to get the intercept and coefficient on the cost variables. Then, I should have regressed on the residuals to get the estimated $\sigma$. I did not have time to change this.) Using these coefficients, we create an initial weighting matrix to recover the coefficients in the first state and then the optimal weighting matrix in the second stage. Finally, we recover the standard error estimates. We get the coefficient (standard error) estimates to be for $\theta_1 = 1.007 \,(0.009), \; \theta_2 = 0.977 \, (0.117), \; \text{ and } \sigma = 0.099 \, (0.008)$.
+
+        \item We get the coefficient (standard error) estimates to be for $\theta_1 = 1.008 \,(0.021), \; \theta_2 = 1.038 \, (0.452), \; \text{ and } \sigma = 3e-07 \, (0.620)$.
+        
+        The biggest change is the standard error for $\sigma$. It increases by several orders of magnitude and we no longer precisely estimate the parameter. The standard errors increased because fourth moment captures the variance of prices when combined with the firms moment. That is, the first moment is matching expectations of prices while the second matches second moments. Combining these, in effect, matches the observed price variance to the model-implied variance, which is parameterized by $\sigma$. By dropping the last moment, we no longer match on variance. 
+
+
+        \item Since the firms suppose that $\eta_i = 0$, the equilibrium quantity values would not change. However, the equilibrium price would include the additional variation. For ML, this additional variation would carry through to our integrating out step. Since now there would be three unobservables, we would need to integrate out twice, once over $\epsilon_i^2$ and then for $\epsilon_i^1$. This would change the change of variable step and require us to simulate $\eta$'s. For GMM, the four parameters and four moments would lead the model to be exactly identified. This would allow us to compute the simplified formula for the variance-covariance matrix and not require us to make some initial guess. All that would change implementing would be changing the model-implies price. I assume that since there is additional noise in the price, standard errors would, generally, increase for both ML and GMM. 
+        
+        \item In what follows, we fix the set of shocks that hit each market. Following Dan's suggestion, compare a world where $\phi$ is large and $\sigma$ is small to one where $\phi$ is small and $\sigma$ is large. In the former, shocks directly to price have a larger impact, while the changes to price from marginal cost shocks are dampened. The entire impact is uncertain unless we have quantified the magnitude of the shocks. Similarly, in the former case shocks to marginal costs now have a larger impact, which is carried through to equilibrium prices. But, shocks to prices themselves from $\eta_i$ are now smaller. As before, the magnitude of changes to prices depend on how different the parameters are. It is very possible that both scenerios lead to the same ``noise'' on prices. That is, we could observe the same set of prices across markets that come from either world. This makes it difficult to identify the parameters. 
+        
+        If we had data on $q_i$, we may be able to perform a two-stage ML procedure to first find the likelihood we observe a given set of quantities given our model predictions to get parameter estimates on $\sigma$. In the second stage we would then isolate the effect of price shocks directly using what we found in the first stage. In GMM we could add an additional moment restriction that fits the difference in observed quantity to the model-implies quantities.
+        
+        \item Unlike the $\epsilon$'s, here the error term $\alpha_i$ is common between firms within a market. So, $\alpha_i$ is capturing market-level unobserved marginal cost shock and $\rho$ is capturing the extent to which these shocks pass through onto both firms marginal costs. Before, the market-level shocks were different but impacted marginal costs the same (as in, $\sigma$ is a common parameter across firm-market-level shocks $\epsilon_i^j$). When $\rho \to 0$, the model returns to firm-market level shocks affecting the marginal costs. When $\rho \to \infty$ the market-level shocks tend to dominate the marginal costs. 
+        
+        \item For both ML and GMM, we would re-derive the equilibrium conditions to account for the new unobservables. The following procedure sketches assume this is done. For ML, we could perform a two-stage ML where we first integrate out one of the $\epsilon$'s and repeat this for the other since there are now three unobservables and on dependent variable. For GMM, I do not think we need to change anything since the unobservable will change the dispersion of prices, which we account for in the fourth moment. We will also have an exactly identified model. 
+        
+        \item Since $\rho$ and $\sigma$ are common to both firms' marginal costs in market $i$, one being large and the other being small will change the dispersion of marginal costs in such a way that either scenario could have produced the implies marginal costs. That is, we could not disentangle a world where $\rho$ is large while $\sigma$ is small to a world that is vice versa. Of course, this depends on our assumption that the unobservables have the same distribution for each firm. 
+        
+        \item Unlike the case where $p_i = 100 - q_i + \phi \eta_i$, here the new unobservables impact price only through changes in marginal costs and not shocks to prices themselves. Thus, since quantity depends on the amount both firms supply, we wouldn't make much progress only with total quantity observed. In effect, we would have the same problem as in the previous part, only now replacing price with quantity. For example, in GMM, we could add an additional moment restriction that fits the difference between model-implied quantity to observed quantity. However, our model implies that we would really only be capturing the affect of $\alpha_i$ since that shock is common to firms. 
+        
+        \item With each firms' quantities, we can make progress. For ML, we would perform the two-stage ML where we first find the likelihood we observe each quantity and then the probability observe price. For GMM, we could add moments that match each firms' quantities to the model-implies quantity. Now, we can separately observe how total quantity changes from the common shock to firms and how each quantity shifts from firm-specific shocks. That is, we could add two moment conditions to capture each firms' quantity. 
+
+    \end{subproblems}
+\end{problem}
+
+\end{document}
